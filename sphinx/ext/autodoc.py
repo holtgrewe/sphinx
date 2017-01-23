@@ -1487,6 +1487,7 @@ class DataDocumenter(ModuleLevelDocumenter):
     priority = -10
     option_spec = dict(ModuleLevelDocumenter.option_spec)
     option_spec["annotation"] = annotation_option
+    option_spec["strvalue"] = bool_option
 
     @classmethod
     def can_document_member(cls, member, membername, isattr, parent):
@@ -1497,18 +1498,31 @@ class DataDocumenter(ModuleLevelDocumenter):
         # type: (unicode) -> None
         ModuleLevelDocumenter.add_directive_header(self, sig)
         sourcename = self.get_sourcename()
-        if not self.options.annotation:
-            try:
-                objrepr = object_description(self.object)
-            except ValueError:
+        if self.options.strvalue and isinstance(self.object, text_type):
+            self.add_line(u'', sourcename)
+            self.add_line(u'   ::', sourcename)
+            self.add_line(u'', sourcename)
+            for line in self.object.splitlines(keepends=False):
+                self.add_line(u'        %s' % line, sourcename)
+        else:
+            if not self.options.annotation:
+                try:
+                    objrepr = object_description(self.object)
+                except ValueError:
+                    pass
+                else:
+                    self.add_line(u'   :annotation: = ' + objrepr, sourcename)
+            elif self.options.annotation is SUPPRESS:
                 pass
             else:
-                self.add_line(u'   :annotation: = ' + objrepr, sourcename)
-        elif self.options.annotation is SUPPRESS:
-            pass
+                self.add_line(u'   :annotation: %s' % self.options.annotation,
+                              sourcename)
+
+    def get_doc(self, *args, **kwargs):
+        if self.options.strvalue:
+            return []
         else:
-            self.add_line(u'   :annotation: %s' % self.options.annotation,
-                          sourcename)
+            return ModuleLevelDocumenter.get_doc(self, *args, **kwargs)
 
     def document_members(self, all_members=False):
         # type: (bool) -> None
